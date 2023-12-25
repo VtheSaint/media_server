@@ -1,10 +1,10 @@
-use std::env;
+use std::{env, borrow::BorrowMut};
 
 use actix::Actor;
 use actix_web::{Result, HttpServer, App, web::Data, middleware::Logger};
 use dotenvy::dotenv;
 
-use crate::websocket::lobby::Lobby;
+use crate::{websocket::lobby::Lobby, routes::routes_factory};
 
 
 pub mod websocket;
@@ -28,8 +28,7 @@ async fn main() -> Result<(), std::io::Error> {
         App::new()
             .app_data(Data::new(lobby.clone()))
             .wrap(Logger::default())
-
-
+            .configure(routes_factory)
     })
     .bind(server_url)?
     .run()

@@ -8,7 +8,7 @@ use super::messages::{WsMessage, Disconnect, Connect, AudioFrame, VideoFrame};
 
 
 type Socket = Recipient<WsMessage>;
-
+#[derive(Debug)]
 pub struct Room {
     pub participants: HashMap<Uuid, Socket>
 }
@@ -20,7 +20,7 @@ impl Default for Room {
         }
     }
 }
-
+#[derive(Debug)]
 pub struct Lobby {
     pub sessions: HashMap<Uuid, Room>,
 }
@@ -34,8 +34,12 @@ impl Default for Lobby {
 }
 
 impl Lobby {
-    fn send_connect(&self, message: &str, room_id: &Uuid, id_to: &Uuid) {
+    fn send_connect(&mut self, message: &str, room_id: &Uuid, id_to: &Uuid) {
+        if self.sessions.get(room_id).is_none() {
+            self.sessions.insert(*room_id, Room::default());
+        }
         if let Some(room) = self.sessions.get(room_id) {
+            println!("{:?}", room.participants);
             if let Some(socket_recipient) = room.participants.get(id_to) {
                 let _ = socket_recipient
                 .do_send(
@@ -45,6 +49,9 @@ impl Lobby {
 
         } else {
             println!("attempting to send message but couldn't find user id.");
+            // self.sessions.insert(*room_id, Room::default());
+            // if let Some(room) = self.sessions.get(room_id) {
+            // }
         }
     }
 }
@@ -53,6 +60,7 @@ impl Lobby {
 impl Actor for Lobby {
     type Context = Context<Self>;
 }
+
 
 impl Handler<Disconnect> for Lobby {
     type Result = ();
