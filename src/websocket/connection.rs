@@ -3,11 +3,12 @@ use actix::prelude::ContextFutureSpawner;
 use actix::{fut, ActorContext, WrapFuture, ActorFutureExt, StreamHandler, Handler};
 use actix::{Addr, Actor, AsyncContext};
 use actix_web_actors::ws;
+use serde_json::Value;
 use uuid::Uuid;
 
 
 use super::lobby::Lobby;
-use super::messages::{Connect, Disconnect, WsMessage};
+use super::messages::{Connect, Disconnect, WsMessage, AudioFrame};
 
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -96,7 +97,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
             Ok(ws::Message::Pong(_)) => {
                 self.heartbeat= Instant::now();
             }
-            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
+            Ok(ws::Message::Binary(bin)) => {
+                ctx.binary(bin)
+            },
             Ok(ws::Message::Close(reason)) => {
                 ctx.close(reason);
                 ctx.stop();
@@ -106,6 +109,34 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
             }
             Ok(ws::Message::Nop) => (),
             Ok(ws::Message::Text(s)) => {
+                let x: Value = serde_json::from_str(&s).expect("Can't parse JSON");
+                if let Some(j_type) = x.get("j_type") {
+                    if let Some(j_type_str) = j_type.as_str() {
+                        match j_type_str {
+                            "VF" => {
+                                // Обработка случая "VF"
+                                println!("It's VF!");
+                            },
+                            "AF" => {
+                                // Обработка случая "AF"
+                                println!("It's AF!");
+                                let x: AudioFrame = serde_json::from_str(&s).unwrap();
+                                println!("{:?}", x);
+                                self.lobby_addr.do_send(x);
+
+                            },
+                            _ => {
+                                // Обработка других случаев
+                                println!("Unknown type");
+                            },
+                        }
+                    } else {
+                        // Обработка случая, когда "j_type" не является строкой
+                        println!("j_type is not a string");
+                    }
+                }
+                
+            }
                 // let x = serde_json::from_str::<ClientActorMessage>(&s);
                 // match x {
                     // Ok(value) => {
@@ -115,7 +146,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
                 // }
                 // let msg = WsMessage(s.to_string());
                 // self.lobby_addr.do_send("");
-            },
+            // },
             Err(e) => std::panic::panic_any(e),
         }
     }
@@ -130,3 +161,18 @@ impl Handler<WsMessage> for WsConn {
         ctx.text(msg.0);
     }
 }
+
+
+impl Handler<AudioFrame> for WsConn {
+    type Result = ();
+
+    fn handle(&mut self, msg: AudioFrame, ctx: &mut Self::Context) -> Self::Result {
+        println!("HANDLED");
+        ctx.text(serde_json::to_string(&msg).unwrap());
+        
+    }
+}
+
+
+// pub fn text(&mut self, text: impl Into<ByteString>) {
+    // self.write_raw(Message::Text(text.into()));
