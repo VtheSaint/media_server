@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 
 use super::lobby::Lobby;
-use super::messages::{Connect, Disconnect, WsMessage, AudioFrame};
+use super::messages::{Connect, Disconnect, WsMessage, AudioFrame, VideoFrame};
 
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -114,16 +114,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
                     if let Some(j_type_str) = j_type.as_str() {
                         match j_type_str {
                             "VF" => {
-                                // Обработка случая "VF"
-                                println!("It's VF!");
+                                let x: VideoFrame = serde_json::from_str(&s).unwrap();
+                                self.lobby_addr.do_send(x);
                             },
                             "AF" => {
-                                // Обработка случая "AF"
-                                println!("It's AF!");
                                 let x: AudioFrame = serde_json::from_str(&s).unwrap();
-                                println!("{:?}", x);
                                 self.lobby_addr.do_send(x);
-
                             },
                             _ => {
                                 // Обработка других случаев
@@ -137,16 +133,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
                 }
                 
             }
-                // let x = serde_json::from_str::<ClientActorMessage>(&s);
-                // match x {
-                    // Ok(value) => {
-                        // self.lobby_addr.do_send(value)
-                    // },
-                    // Err(e) => println!("{:?}", e)
-                // }
-                // let msg = WsMessage(s.to_string());
-                // self.lobby_addr.do_send("");
-            // },
             Err(e) => std::panic::panic_any(e),
         }
     }
@@ -167,9 +153,16 @@ impl Handler<AudioFrame> for WsConn {
     type Result = ();
 
     fn handle(&mut self, msg: AudioFrame, ctx: &mut Self::Context) -> Self::Result {
-        println!("HANDLED");
         ctx.text(serde_json::to_string(&msg).unwrap());
-        
+    }
+}
+
+
+impl Handler<VideoFrame> for WsConn {
+    type Result = ();
+
+    fn handle(&mut self, msg: VideoFrame, ctx: &mut Self::Context) -> Self::Result {
+        ctx.text(serde_json::to_string(&msg).unwrap());
     }
 }
 

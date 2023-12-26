@@ -1,5 +1,4 @@
 use actix::prelude::{Message, Recipient};
-use actix_web::web::Bytes;
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
@@ -36,6 +35,7 @@ pub struct AudioFrame {
 
 #[derive(Message)]
 #[rtype(result = "()")]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct VideoFrame {
     pub j_type: String,
     pub storage_id: Uuid,

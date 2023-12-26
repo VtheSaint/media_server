@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::{File, OpenOptions}, io::Write, env, path::Path};
+use std::{collections::HashMap, fs::OpenOptions, io::Write, env, path::{Path, PathBuf}};
 
 use actix::{Recipient, Actor, Context, Handler};
 use serde::Serialize;
@@ -73,7 +73,7 @@ impl Handler<Disconnect> for Lobby {
 impl Handler<Connect> for Lobby {
     type Result = ();
 
-    fn handle(&mut self, msg: Connect, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: Connect, _ctx: &mut Self::Context) -> Self::Result {
         if self.sessions.get(&msg.room_id).is_none() {
             self.sessions.insert(msg.room_id, Room::default());
         }
@@ -89,27 +89,30 @@ impl Handler<Connect> for Lobby {
 impl Handler<AudioFrame> for Lobby {
     type Result = ();
 
-    fn handle(&mut self, msg: AudioFrame, ctx: &mut Self::Context) -> Self::Result {
-        if msg.part == 0 {
-            let current_dir = env::current_dir().expect("Failed to get current directory");
-            let rel_path = &format!("storage/{}.mp4", msg.storage_id);
-            // let rel_path = &format!("../../storage/{}.mp4", msg.storage_id);
-            let file_path = Path::new(rel_path);
-            let absolute_path = current_dir.join(file_path);
-            let mut file = OpenOptions::new()
-            .create(true)
+    fn handle(&mut self, msg: AudioFrame, _ctx: &mut Self::Context) -> Self::Result {
+        let is_create = msg.part == 0;
+        let absolute_path = create_path(&msg.storage_id);
+        let mut file = OpenOptions::new()
+            .create(is_create)
             .append(true)
-            .open(absolute_path).unwrap();
-            file.write_all(&msg.body);
-        }
+            .open(absolute_path)
+            .unwrap();
+        let _ = file.write_all(&msg.body);
     }
 }
 
 impl Handler<VideoFrame> for Lobby {
     type Result = ();
 
-    fn handle(&mut self, msg: VideoFrame, ctx: &mut Self::Context) -> Self::Result {
-        
+    fn handle(&mut self, msg: VideoFrame, _ctx: &mut Self::Context) -> Self::Result {
+        let is_create = msg.part == 0;
+        let absolute_path = create_path(&msg.storage_id);
+        let mut file = OpenOptions::new()
+            .create(is_create)
+            .append(true)
+            .open(absolute_path)
+            .unwrap();
+        let _ = file.write_all(&msg.body);
     }
 }
 
@@ -124,4 +127,12 @@ impl ConnectionResponse {
     fn new(user_id: Uuid, room_id: Uuid) -> Self {
         Self { user_id, room_id }
     }
+}
+
+
+fn create_path(storage_id: &Uuid) -> PathBuf {
+    let current_dir = env::current_dir().expect("Failed to get current directory");
+    let rel_path = &format!("storage/{}.mp4", storage_id);
+    let file_path = Path::new(rel_path);
+    current_dir.join(file_path)
 }
