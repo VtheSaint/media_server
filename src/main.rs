@@ -15,7 +15,7 @@ async fn main() -> Result<(), std::io::Error> {
     
     dotenv().ok();
     env::set_var("RUST_LOG", "actix_web=info,actix_server=info");
-    env::set_var("RUST_BACKTRACE", "RUST_BACKTRACE=1");
+    // env::set_var("RUST_BACKTRACE", "RUST_BACKTRACE=1");
     env_logger::init();
 
     let server_url = env::var("SERVER_URL")

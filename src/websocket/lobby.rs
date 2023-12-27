@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::OpenOptions, io::Write, env, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::{OpenOptions, self}, io::Write, env, path::{Path, PathBuf}};
 
 use actix::{Recipient, Actor, Context, Handler};
 use serde::Serialize;
@@ -60,10 +60,20 @@ impl Handler<Disconnect> for Lobby {
     type Result = ();
 
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) -> Self::Result {
+        println!("{:?}", msg);
         if  let Some(room) = self.sessions.get_mut(&msg.room_id) {
             room.participants.remove(&msg.self_id);
             if room.participants.is_empty() {
                 self.sessions.remove(&msg.room_id);
+            }
+            let absolute_path = create_task(&msg.self_id);
+            println!("{:?}", absolute_path);
+            if check_file_existence(&msg.self_id) {
+                let  _ = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(absolute_path)
+                    .unwrap();
             }
         }
     }
@@ -135,4 +145,23 @@ fn create_path(storage_id: &Uuid) -> PathBuf {
     let rel_path = &format!("storage/{}.mp4", storage_id);
     let file_path = Path::new(rel_path);
     current_dir.join(file_path)
+}
+
+fn create_task(task_id: &Uuid) -> PathBuf {
+    let current_dir = env::current_dir().expect("Failed to get current directory");
+    let rel_path = &format!("tasks/{}.mp4", task_id);
+    let file_path = Path::new(rel_path);
+    current_dir.join(file_path)
+}
+
+
+fn check_file_existence(path: &Uuid) -> bool {
+    let current_dir = env::current_dir().expect("Failed to get current directory");
+    let full_path = &format!("storage/{}.mp4", path);
+    let file_path = Path::new(full_path);
+    if let Ok(metadata) = fs::metadata(current_dir.join(file_path)) {
+        metadata.is_file()
+    } else {
+        false
+    }
 }

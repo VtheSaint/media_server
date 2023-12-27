@@ -165,7 +165,3 @@ impl Handler<VideoFrame> for WsConn {
         ctx.text(serde_json::to_string(&msg).unwrap());
     }
 }
-
-
-// pub fn text(&mut self, text: impl Into<ByteString>) {
-    // self.write_raw(Message::Text(text.into()));
